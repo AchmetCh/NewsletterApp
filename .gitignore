@@ -30,3 +30,4 @@ Thumbs.db
 *~
 /newsletter-app.zip
 /client/node_modules
+/client/.env
