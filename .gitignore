@@ -29,3 +29,5 @@ Thumbs.db
 *.swo
 *~
 /newsletter-app.zip
+/client/node_modules
+/client/.env
