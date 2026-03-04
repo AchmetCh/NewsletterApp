@@ -5,9 +5,11 @@ import MainLayout from '../layouts/MainLayout';
 import { newsletterAPI } from '../api/newsletters';
 import { uploadAPI } from '../api/upload';
 
+
 const EditorPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const emailEditorRef = useRef(null);
   
   const [newsletter, setNewsletter] = useState(null);
@@ -217,13 +219,15 @@ const EditorPage = () => {
             onReady={onEditorReady}
             options={{
               features: {
-                imageEditor: true
+                imageEditor: true,
+                devTab: false
               },
               tools: {
                 image: {
                   enabled: true
                 }
-              }
+              },
+              displayMode: 'email'
             }}
             onUpload={onImageUpload}
           />
