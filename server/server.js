@@ -11,6 +11,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const newsletterRoutes = require('./routes/newsletterRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const inviteRoutes = require('./routes/inviteRoutes');
 
 // Initialize app
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/newsletters', newsletterRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/invites', inviteRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -46,8 +48,25 @@ app.get('/api/health', (req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+// Start server with port fallback to avoid crashing on EADDRINUSE
+const BASE_PORT = Number(process.env.PORT) || 5000;
+const MAX_PORT_RETRIES = 10;
+
+const startServer = (port, retries = 0) => {
+  const server = app.listen(port, () => {
+    console.log(`Server running in ${process.env.NODE_ENV} mode on port ${port}`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE' && retries < MAX_PORT_RETRIES) {
+      const nextPort = port + 1;
+      console.warn(`Port ${port} is in use. Retrying on ${nextPort}...`);
+      startServer(nextPort, retries + 1);
+      return;
+    }
+
+    throw err;
+  });
+};
+
+startServer(BASE_PORT);
