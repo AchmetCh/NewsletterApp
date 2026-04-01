@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import EditorPage from './pages/EditorPage';
 import AdminPage from './pages/AdminPage';
+import AcceptInvite from './pages/AcceptInvite';
 
 function App() {
   return (
@@ -12,7 +13,8 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          
+          <Route path="/accept-invite" element={<AcceptInvite />} />
+
           <Route
             path="/dashboard"
             element={
@@ -21,7 +23,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/editor/:id"
             element={
@@ -30,7 +32,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/admin"
             element={
@@ -39,7 +41,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

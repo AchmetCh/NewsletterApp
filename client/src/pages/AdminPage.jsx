@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import MainLayout from '../layouts/MainLayout';
 import { userAPI } from '../api/users';
+import InvitePanel from '../components/InvitePanel';
+
 
 const AdminPage = () => {
   const [users, setUsers] = useState([]);
@@ -119,6 +121,9 @@ const AdminPage = () => {
             }}
           />
         )}
+        <div style={{ marginTop: '3rem', borderTop: '1px solid #e5e7eb', paddingTop: '2rem' }}>
+          <InvitePanel />
+        </div>
       </div>
     </MainLayout>
   );
@@ -164,7 +169,7 @@ const CreateUserModal = ({ onClose, onSuccess }) => {
         maxWidth: '500px'
       }}>
         <h2 style={{ marginBottom: '1.5rem' }}>Create User</h2>
-        
+
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>Email</label>
