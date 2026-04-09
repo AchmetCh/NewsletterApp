@@ -4,7 +4,7 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import EditorPage from './pages/EditorPage';
-import AdminPage from './pages/AdminPage';
+import AdminPage from './pages/Admin/AdminPage';
 import AcceptInvite from './pages/AcceptInvite';
 
 function App() {

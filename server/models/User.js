@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   email: {
     type: String,
     required: [true, 'Email is required'],
@@ -20,6 +25,11 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'user'],
     default: 'user'
   },
+  status: {
+    type: String,
+    enum: ['active', 'suspended'],
+    default: 'active',
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -27,18 +37,18 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     return next();
   }
-  
+
   const saltRounds = parseInt(process.env.SALT_ROUNDS) || 10;
   this.password = await bcrypt.hash(this.password, saltRounds);
   next();
 });
 
 // Method to compare passwords
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
