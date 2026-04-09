@@ -152,7 +152,7 @@ const acceptInvite = async (req, res) => {
 // -------------------------------------------------------
 const getInvites = async (req, res) => {
     try {
-        const invites = await Invite.find()
+        const invites = await Invite.find({ used: false })
             .sort({ createdAt: -1 })
             .populate('invitedBy', 'name email');
         return res.status(200).json(invites);
