@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getUsers, createUser, deleteUser } = require('../controllers/userController');
+const { getUsers, createUser, updateUser, deleteUser, suspendUser } = require('../controllers/userController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
 
@@ -10,6 +10,8 @@ router.use(roleMiddleware('admin'));
 
 router.get('/', getUsers);
 router.post('/', createUser);
+router.put('/:id', updateUser);
 router.delete('/:id', deleteUser);
+router.patch('/:id/suspend', suspendUser);
 
 module.exports = router;
