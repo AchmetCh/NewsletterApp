@@ -121,6 +121,7 @@
 
 .navItemActive {
     composes: navItem;
+    margin: 0 auto;
     background: #00929C;
     color: #FFFFFF;
     font-weight: 500;
@@ -137,7 +138,7 @@
     height: 48px;
     padding: 0;
     justify-content: center;
-    border-radius: 12px;
+    border-radius: 16px;
 }
 
 .navIcon {
@@ -198,8 +199,8 @@
 
 .sidebarCollapsed .exitBtn {
     width: 48px;
-    justify-content: center;
     padding: 0;
+    justify-content: center;
 }
 
 /* ── Main ────────────────────────────────────────────────── */
