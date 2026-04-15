@@ -47,10 +47,21 @@ const mergeUsersAndInvites = (users, invites) => {
 export default function AdminPage() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Auto-collapse sidebar on small screens
+  useEffect(() => {
+    const handleResize = () => {
+      setCollapsed(window.innerWidth < 1024);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [users, setUsers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [filter, setFilter] = useState('All');
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(6);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -201,7 +212,7 @@ export default function AdminPage() {
 
           {/* Topbar */}
           <div className={styles.topbar}>
-            <div className={styles.avatar}>JS</div>
+            <div className={styles.avatar}>KJ</div>
           </div>
 
           {/* Page content */}
