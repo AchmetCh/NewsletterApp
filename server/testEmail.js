@@ -1,9 +1,9 @@
 // server/testEmail.js
-require('dotenv').config();
+require('dotenv').config({ path: __dirname + '/.env' });
+
 const nodemailer = require('nodemailer');
 
-console.log('GMAIL_USER:', process.env.GMAIL_USER);
-console.log('GMAIL_APP_PASSWORD:', process.env.GMAIL_APP_PASSWORD ? 'SET' : 'NOT SET');
+console.log('MAILGUN_API_KEY', process.env.MAILGUN_API_KEY);
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
