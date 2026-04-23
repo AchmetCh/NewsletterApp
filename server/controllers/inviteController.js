@@ -9,51 +9,50 @@ const { sendInviteEmail } = require('../utils/sendEmail');
 // -------------------------------------------------------
 const sendInvite = async (req, res) => {
     try {
-        console.log('1. sendInvite reached, body:', req.body);
+        const { email, name } = req.body;
 
-        const { email } = req.body;
-        if (!email) return res.status(400).json({ message: 'Email is required' });
-
-        const normalizedEmail = String(email).trim().toLowerCase();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(normalizedEmail)) {
-            return res.status(400).json({ message: 'Please provide a valid email address' });
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
         }
 
-        console.log('2. checking existing user');
-        const existingUser = await User.findOne({ email: normalizedEmail });
-        if (existingUser) return res.status(409).json({ message: 'A user with this email already exists' });
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(409).json({ message: 'A user with this email already exists' });
+        }
 
-        console.log('3. checking existing invite');
-        const existingInvite = await Invite.findOne({ email: normalizedEmail, used: false, expiresAt: { $gt: new Date() } });
-        if (existingInvite) return res.status(409).json({ message: 'An active invite for this email already exists' });
+        const existingInvite = await Invite.findOne({
+            email,
+            used: false,
+            expiresAt: { $gt: new Date() },
+        });
+        if (existingInvite) {
+            return res.status(409).json({ message: 'An active invite for this email already exists' });
+        }
 
-        console.log('4. creating invite');
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
-        const invite = await Invite.create({ email: normalizedEmail, token, expiresAt, invitedBy: req.user._id });
 
-        console.log('5. sending email');
+        const invite = await Invite.create({
+            email,
+            name: name || '',
+            token,
+            expiresAt,
+            invitedBy: req.user._id,
+        });
+
         try {
-            await sendInviteEmail(normalizedEmail, token);
-        } catch (mailErr) {
-            // Keep DB state consistent: no pending invite if the email never sent.
+            await sendInviteEmail(email, token);
+        } catch (emailErr) {
+            // Roll back invite if email fails so DB stays clean
             await Invite.findByIdAndDelete(invite._id);
-            console.error('sendInvite mail error:', mailErr);
-            return res.status(502).json({
-                message: 'Invite email could not be delivered. Check Gmail settings and recipient address.',
-                error: process.env.NODE_ENV === 'development' ? mailErr.message : undefined,
-            });
+            console.error('Email send error:', emailErr.message);
+            return res.status(500).json({ message: 'Failed to send invite email. Please try again.' });
         }
 
-        console.log('6. done');
-        return res.status(201).json({ message: `Invite sent to ${normalizedEmail}` });
+        return res.status(201).json({ message: `Invite sent to ${email}` });
     } catch (err) {
-        console.error('sendInvite caught error:', err);
-        return res.status(500).json({
-            message: 'Server error while creating invite',
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined,
-        });
+        console.error('sendInvite error:', err.message);
+        return res.status(500).json({ message: 'Server error' });
     }
 };
 
@@ -90,14 +89,18 @@ const validateInvite = async (req, res) => {
 
 // -------------------------------------------------------
 // POST /api/invites/accept
-// Public — invitee submits profile to complete account setup
+// Invitee submits password only to complete account setup
 // -------------------------------------------------------
 const acceptInvite = async (req, res) => {
     try {
-        const { token, name, team, title, password } = req.body;
+        const { token, password } = req.body;
 
-        if (!token || !name || !password) {
-            return res.status(400).json({ message: 'Token, name, and password are required' });
+        if (!token || !password) {
+            return res.status(400).json({ message: 'Token and password are required' });
+        }
+
+        if (password.length < 8) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters' });
         }
 
         const invite = await Invite.findOne({ token });
@@ -117,14 +120,13 @@ const acceptInvite = async (req, res) => {
             return res.status(409).json({ message: 'An account for this email already exists' });
         }
 
-        // Create the user — password hashed by User model pre-save hook
+        // Create user with invite profile data; password hashed by User model pre-save hook
         const user = await User.create({
+            name: (invite.name || '').trim(),
             email: invite.email,
             password,
-            name,
-            team: team || '',
-            title: title || '',
             role: 'user',
+            status: 'active',
         });
 
         // Mark invite as used
@@ -132,12 +134,12 @@ const acceptInvite = async (req, res) => {
         await invite.save();
 
         return res.status(201).json({
-            message: 'Account created successfully',
+            message: 'Account activated successfully',
             user: {
                 id: user._id,
                 email: user.email,
-                name: user.name,
                 role: user.role,
+                status: user.status,
             },
         });
     } catch (err) {
@@ -152,7 +154,7 @@ const acceptInvite = async (req, res) => {
 // -------------------------------------------------------
 const getInvites = async (req, res) => {
     try {
-        const invites = await Invite.find({ used: false })
+        const invites = await Invite.find()
             .sort({ createdAt: -1 })
             .populate('invitedBy', 'name email');
         return res.status(200).json(invites);
@@ -185,10 +187,40 @@ const revokeInvite = async (req, res) => {
     }
 };
 
+// -------------------------------------------------------
+// POST /api/invites/:id/resend
+// Admin resends invite to a pending or expired recipient
+// -------------------------------------------------------
+const resendInvite = async (req, res) => {
+    try {
+        const invite = await Invite.findById(req.params.id);
+
+        if (!invite) {
+            return res.status(404).json({ message: 'Invite not found' });
+        }
+        if (invite.used) {
+            return res.status(400).json({ message: 'This invite has already been accepted' });
+        }
+
+        // Reset token and extend expiry by 48 hours
+        invite.token = crypto.randomBytes(32).toString('hex');
+        invite.expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+        await invite.save();
+
+        await sendInviteEmail(invite.email, invite.token);
+
+        return res.status(200).json({ message: `Invite resent to ${invite.email}` });
+    } catch (err) {
+        console.error('resendInvite error:', err.message);
+        return res.status(500).json({ message: 'Server error' });
+    }
+};
+
 module.exports = {
     sendInvite,
     validateInvite,
     acceptInvite,
     getInvites,
     revokeInvite,
+    resendInvite,
 };

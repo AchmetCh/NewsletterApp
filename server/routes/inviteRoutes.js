@@ -7,6 +7,7 @@ const {
   acceptInvite,
   getInvites,
   revokeInvite,
+  resendInvite,
 } = require('../controllers/inviteController');
 
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -20,5 +21,6 @@ router.post('/accept', acceptInvite);
 router.post('/', authMiddleware, roleMiddleware('admin'), sendInvite);
 router.get('/', authMiddleware, roleMiddleware('admin'), getInvites);
 router.delete('/:id', authMiddleware, roleMiddleware('admin'), revokeInvite);
+router.post('/:id/resend', authMiddleware, roleMiddleware('admin'), resendInvite);
 
 module.exports = router;

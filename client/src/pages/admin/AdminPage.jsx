@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userAPI } from '../../api/users';
-import { sendInvite, fetchInvites, revokeInvite } from '../../api/invite';
+import { sendInvite, fetchInvites, revokeInvite, resendInvite } from '../../api/invite';
 import styles from './AdminPage.module.css';
 import logo from '../../../assets/kw_logo.png';
 import usersIllustration from '../../../assets/users_invite_illustration_transparent.png';
@@ -14,9 +14,19 @@ const normalizeStatus = (user) => {
 };
 
 const mergeUsersAndInvites = (users, invites) => {
+  const inviteNameByEmail = new Map(
+    invites.map(inv => [
+      String(inv.email || '').toLowerCase(),
+      typeof inv.name === 'string' ? inv.name.trim() : '',
+    ]),
+  );
+
   const rows = users.map(u => ({
     _id: u._id,
-    name: u.name || '—',
+    name:
+      (typeof u.name === 'string' && u.name.trim()) ||
+      inviteNameByEmail.get(String(u.email || '').toLowerCase()) ||
+      '—',
     email: u.email,
     role: u.role === 'admin' ? 'Admin' : 'Editor',
     status: normalizeStatus(u),
@@ -24,13 +34,16 @@ const mergeUsersAndInvites = (users, invites) => {
   }));
 
   invites.forEach(inv => {
+    // Accepted/used invites represent already-created accounts and should not
+    // appear as standalone rows in the users table.
+    if (inv.used) return;
+
     if (rows.find(r => r.email === inv.email)) return;
     let status = 'Pending';
-    if (inv.used) status = 'Active';
-    else if (new Date(inv.expiresAt) < new Date()) status = 'Expired';
+    if (new Date(inv.expiresAt) < new Date()) status = 'Expired';
     rows.push({
       _id: inv._id,
-      name: '—',
+      name: inv.name || '—',
       email: inv.email,
       role: 'Editor',
       status,
@@ -57,7 +70,6 @@ export default function AdminPage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
   const [users, setUsers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [filter, setFilter] = useState('All');
@@ -108,6 +120,16 @@ export default function AdminPage() {
     }
   };
 
+  const handleResend = async (inviteId) => {
+    try {
+      await resendInvite(inviteId);
+      alert('Invite resent successfully.');
+      loadAll();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to resend invite');
+    }
+  };
+
   const startEdit = (row) => {
     setEditingId(row._id);
     setEditForm({ name: row.name === '—' ? '' : row.name, email: row.email, role: row.role });
@@ -135,7 +157,7 @@ export default function AdminPage() {
 
   const rows = mergeUsersAndInvites(users, invites);
   const filtered = filter === 'All' ? rows : rows.filter(r => r.status === filter);
-  const safePageSize = pageSize > 0 ? pageSize : 5;
+  const safePageSize = pageSize > 0 ? pageSize : 6;
   const totalPages = Math.max(1, Math.ceil(filtered.length / safePageSize));
   const safePage = Math.min(currentPage, totalPages);
   const startIndex = (safePage - 1) * safePageSize;
@@ -212,7 +234,7 @@ export default function AdminPage() {
 
           {/* Topbar */}
           <div className={styles.topbar}>
-            <div className={styles.avatar}>KJ</div>
+            <div className={styles.avatar}>JS</div>
           </div>
 
           {/* Page content */}
@@ -372,6 +394,7 @@ export default function AdminPage() {
                                         anchorRef={btnRef}
                                         onEdit={() => startEdit(row)}
                                         onSuspend={() => { loadAll(); }}
+                                        onResend={() => handleResend(row.inviteId)}
                                         onDelete={() => { handleDelete(row._id); setOpenMenuId(null); }}
                                         onRevoke={() => { handleRevoke(row.inviteId); setOpenMenuId(null); }}
                                         onClose={() => setOpenMenuId(null)}
@@ -395,10 +418,10 @@ export default function AdminPage() {
                         value={safePageSize}
                         onChange={e => setPageSize(Number(e.target.value))}
                       >
-                        {[5, 10, 25].map(n => <option key={n} value={n}>{n}</option>)}
+                        {[6, 10, 25].map(n => <option key={n} value={n}>{n}</option>)}
                       </select>
                       <span className={styles.paginationText}>
-                        &nbsp; {filtered.length === 0 ? 0 : startIndex + 1} – {Math.min(startIndex + safePageSize, filtered.length)} of {filtered.length}
+                        &nbsp;— {filtered.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + safePageSize, filtered.length)} of {filtered.length}
                       </span>
                     </div>
 
@@ -454,7 +477,7 @@ export default function AdminPage() {
 
 // ── DropdownMenu ──────────────────────────────────────────────────────────────
 
-function DropdownMenu({ row, onEdit, onDelete, onRevoke, onSuspend, onClose, anchorRef }) {
+function DropdownMenu({ row, onEdit, onDelete, onRevoke, onResend, onSuspend, onClose, anchorRef }) {
   const ref = useRef();
 
   useEffect(() => {
@@ -512,12 +535,24 @@ function DropdownMenu({ row, onEdit, onDelete, onRevoke, onSuspend, onClose, anc
         </>
       )}
       {!row.isUser && row.status === 'Pending' && (
-        <button className={`${styles.dropItem} ${styles.dropItemDanger}`} onClick={onRevoke}>
-          <span className="material-symbols-outlined">cancel</span>
-          Revoke Invite
+        <>
+          <button className={styles.dropItem} onClick={() => { onResend(); onClose(); }}>
+            <span className="material-symbols-outlined">send</span>
+            Resend Invite
+          </button>
+          <button className={`${styles.dropItem} ${styles.dropItemDanger}`} onClick={onRevoke}>
+            <span className="material-symbols-outlined">cancel</span>
+            Revoke Invite
+          </button>
+        </>
+      )}
+      {!row.isUser && row.status === 'Expired' && (
+        <button className={styles.dropItem} onClick={() => { onResend(); onClose(); }}>
+          <span className="material-symbols-outlined">send</span>
+          Resend Invite
         </button>
       )}
-      {!row.isUser && row.status !== 'Pending' && (
+      {!row.isUser && row.status !== 'Pending' && row.status !== 'Expired' && (
         <span className={styles.dropItemDisabled}>No actions</span>
       )}
     </div>
@@ -548,7 +583,7 @@ function InviteModal({ onClose, onSuccess }) {
     setErrors({});
     setLoading(true);
     try {
-      await sendInvite(email.trim());
+      await sendInvite(email.trim(), name.trim());
       onSuccess();
     } catch (err) {
       setErrors({ email: err.response?.data?.message || 'Failed to send invite.' });

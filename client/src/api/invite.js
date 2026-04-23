@@ -10,8 +10,8 @@ const API = axios.create({
 });
 
 // Admin: send an invite to an email address
-export const sendInvite = async (email) => {
-    const { data } = await API.post('/api/invites', { email });
+export const sendInvite = async (email, name = '') => {
+    const { data } = await API.post('/api/invites', { email, name });
     return data;
 };
 
@@ -21,15 +21,9 @@ export const validateInviteToken = async (token) => {
     return data; // { email }
 };
 
-// Public: submit profile setup to complete account creation
-export const acceptInvite = async ({ token, name, team, title, password }) => {
-    const { data } = await API.post('/api/invites/accept', {
-        token,
-        name,
-        team,
-        title,
-        password,
-    });
+// Public: submit password to complete account activation
+export const acceptInvite = async ({ token, password }) => {
+    const { data } = await API.post('/api/invites/accept', { token, password });
     return data;
 };
 
@@ -42,5 +36,11 @@ export const fetchInvites = async () => {
 // Admin: revoke a pending invite
 export const revokeInvite = async (inviteId) => {
     const { data } = await API.delete(`/api/invites/${inviteId}`);
+    return data;
+};
+
+// Admin: resend invite to a pending or expired recipient
+export const resendInvite = async (inviteId) => {
+    const { data } = await API.post(`/api/invites/${inviteId}/resend`);
     return data;
 };
