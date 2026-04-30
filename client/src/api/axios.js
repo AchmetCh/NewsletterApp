@@ -13,11 +13,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Don't redirect for auth-check requests (handled by AuthContext)
-      const isAuthCheck = error.config?.url?.includes("/api/auth/me");
-      if (!isAuthCheck) {
+      const url = error.config?.url || '';
+      const isAuthCheck = url.includes('/api/auth/me');
+      const isAuthEndpoint = url.includes('/api/auth');
+      if (!isAuthCheck && !isAuthEndpoint) {
         // Token expired or invalid mid-session - redirect to login
-        window.location.href = "/login";
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);

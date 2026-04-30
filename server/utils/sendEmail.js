@@ -44,4 +44,40 @@ const sendInviteEmail = async (toEmail, token) => {
   });
 };
 
-module.exports = { sendInviteEmail };
+/**
+ * Sends a password reset email with a one-time reset link.
+ * @param {string} toEmail - Recipient email
+ * @param {string} token   - Raw password reset token
+ */
+const sendPasswordResetEmail = async (toEmail, token) => {
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
+
+  await mg.messages.create(process.env.MAILGUN_DOMAIN, {
+    from: `KeelWorks Newsletter App <${process.env.MAILGUN_FROM}>`,
+    to: [toEmail],
+    subject: 'Reset your KeelWorks Newsletter App password',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2 style="color: #1a1a1a;">Reset your password</h2>
+        <p>We received a request to reset your password for the <strong>KeelWorks Newsletter App</strong>.</p>
+        <p>Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>
+        <a href="${resetUrl}"
+           style="display: inline-block; margin: 24px 0; padding: 12px 24px;
+                  background-color: #00929C; color: #ffffff; text-decoration: none;
+                  border-radius: 6px; font-weight: bold;">
+          Reset Password
+        </a>
+        <p style="color: #666; font-size: 13px;">
+          If the button doesn't work, copy and paste this link into your browser:<br/>
+          <a href="${resetUrl}">${resetUrl}</a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">
+          If you did not request this, you can safely ignore this email.
+        </p>
+      </div>
+    `,
+  });
+};
+
+module.exports = { sendInviteEmail, sendPasswordResetEmail };
