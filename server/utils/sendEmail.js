@@ -7,6 +7,8 @@ const sendInviteEmail = async (toEmail, token) => {
     key: process.env.MAILGUN_API_KEY,
     url: 'https://api.eu.mailgun.net',
   });
+  console.log("api key", process.env.MAILGUN_API_KEY);
+  
 
   const inviteUrl = `${process.env.CLIENT_URL}/accept-invite?token=${token}`;
 
