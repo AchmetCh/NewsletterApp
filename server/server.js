@@ -15,9 +15,9 @@ const inviteRoutes = require('./routes/inviteRoutes');
 
 // Initialize app
 const app = express();
-
 // Connect to MongoDB
 connectDB();
+console.log('api key in server.js', process.env.MAILGUN_API_KEY);
 
 // Middleware
 app.use(express.json());
